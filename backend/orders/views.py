@@ -1,5 +1,6 @@
 import json
 
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date, parse_time
@@ -25,6 +26,7 @@ def bad_request(message):
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
+@transaction.atomic
 def order_list(request):
     if request.method == "GET":
         status_filter = request.GET.get("status")
@@ -61,6 +63,7 @@ def order_detail(request, order_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@transaction.atomic
 def claim_order(request, order_id):
     order = get_object_or_404(MoveOrder, pk=order_id)
     payload = read_json(request)
@@ -83,6 +86,7 @@ def claim_order(request, order_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@transaction.atomic
 def assign_order(request, order_id):
     order = get_object_or_404(MoveOrder, pk=order_id)
     payload = read_json(request)

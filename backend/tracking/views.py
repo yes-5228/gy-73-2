@@ -1,5 +1,6 @@
 import json
 
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
@@ -24,6 +25,7 @@ def event_to_dict(event):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@transaction.atomic
 def add_progress(request, order_id):
     order = get_object_or_404(MoveOrder, pk=order_id)
     payload = json.loads(request.body.decode("utf-8"))
@@ -40,10 +42,16 @@ def add_progress(request, order_id):
     )
     if stage == ProgressEvent.STAGE_COMPLETED:
         order.status = MoveOrder.STATUS_COMPLETED
-        assigned_worker = order.assigned_to or order.claimed_by
-        if assigned_worker and assigned_worker.status == Worker.STATUS_BUSY:
-            assigned_worker.status = Worker.STATUS_AVAILABLE
-            assigned_worker.save(update_fields=["status"])
+        worker_ids_to_release = set()
+        if order.assigned_to_id:
+            worker_ids_to_release.add(order.assigned_to_id)
+        if order.claimed_by_id:
+            worker_ids_to_release.add(order.claimed_by_id)
+        if worker_ids_to_release:
+            Worker.objects.filter(
+                id__in=worker_ids_to_release,
+                status=Worker.STATUS_BUSY,
+            ).update(status=Worker.STATUS_AVAILABLE)
     elif stage in [ProgressEvent.STAGE_DEPARTED, ProgressEvent.STAGE_LOADING, ProgressEvent.STAGE_IN_TRANSIT, ProgressEvent.STAGE_UNLOADING]:
         order.status = MoveOrder.STATUS_IN_PROGRESS
     order.save(update_fields=["status", "updated_at"])
