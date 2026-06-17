@@ -67,6 +67,10 @@ def claim_order(request, order_id):
     worker = get_object_or_404(Worker, pk=payload.get("worker_id"))
     if order.status != MoveOrder.STATUS_PENDING:
         return bad_request("只有待抢单订单可以抢单")
+    if worker.status == Worker.STATUS_OFFLINE:
+        return bad_request(f"师傅 {worker.name} 当前离线，无法抢单")
+    if worker.status == Worker.STATUS_BUSY:
+        return bad_request(f"师傅 {worker.name} 正在服务中，无法抢单")
 
     order.claimed_by = worker
     order.status = MoveOrder.STATUS_CLAIMED
@@ -83,6 +87,10 @@ def assign_order(request, order_id):
     worker = get_object_or_404(Worker, pk=payload.get("worker_id"))
     if order.status not in [MoveOrder.STATUS_PENDING, MoveOrder.STATUS_CLAIMED]:
         return bad_request("当前订单状态不能派单")
+    if worker.status == Worker.STATUS_OFFLINE:
+        return bad_request(f"师傅 {worker.name} 当前离线，无法派单")
+    if worker.status == Worker.STATUS_BUSY:
+        return bad_request(f"师傅 {worker.name} 正在服务中，无法派单")
 
     order.assigned_to = worker
     order.status = MoveOrder.STATUS_ASSIGNED

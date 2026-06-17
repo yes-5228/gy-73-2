@@ -354,6 +354,18 @@ select:disabled {
   margin: 0;
 }
 
+.notice-bar {
+  align-items: center;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  color: #92400e;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+}
+
 @media (max-width: 1180px) {
   .hero,
   .layout-grid {
