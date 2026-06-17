@@ -366,6 +366,54 @@ select:disabled {
   padding: 10px 14px;
 }
 
+.inline-spinner {
+  align-items: center;
+  color: #0f766e;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.select-overlay {
+  align-items: center;
+  background: rgba(15, 118, 110, 0.1);
+  border: 1px solid #0f766e;
+  border-radius: 6px;
+  bottom: 0;
+  color: #0f766e;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 700;
+  gap: 8px;
+  justify-content: center;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.order-card-busy {
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.15);
+  opacity: 0.95;
+}
+
 @media (max-width: 1180px) {
   .hero,
   .layout-grid {

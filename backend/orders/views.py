@@ -75,6 +75,8 @@ def claim_order(request, order_id):
     order.claimed_by = worker
     order.status = MoveOrder.STATUS_CLAIMED
     order.save(update_fields=["claimed_by", "status", "updated_at"])
+    worker.status = Worker.STATUS_BUSY
+    worker.save(update_fields=["status"])
     ProgressEvent.objects.create(order=order, stage=ProgressEvent.STAGE_CLAIMED, worker=worker, message=f"{worker.name} 已抢单")
     return JsonResponse(order_to_dict(order, include_detail=True))
 
@@ -97,5 +99,7 @@ def assign_order(request, order_id):
     if not order.claimed_by:
         order.claimed_by = worker
     order.save(update_fields=["assigned_to", "claimed_by", "status", "updated_at"])
+    worker.status = Worker.STATUS_BUSY
+    worker.save(update_fields=["status"])
     ProgressEvent.objects.create(order=order, stage=ProgressEvent.STAGE_ASSIGNED, worker=worker, message=f"平台已派单给 {worker.name}")
     return JsonResponse(order_to_dict(order, include_detail=True))

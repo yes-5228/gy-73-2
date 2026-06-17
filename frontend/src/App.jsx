@@ -31,6 +31,7 @@ export default function App() {
       await refresh();
     } catch (err) {
       setError(err.message);
+      throw err;
     }
   }
 
