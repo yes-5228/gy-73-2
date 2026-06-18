@@ -64,40 +64,49 @@ def order_detail(request, order_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def claim_order(request, order_id):
-    order = get_object_or_404(MoveOrder, pk=order_id)
     payload = read_json(request)
-    worker = get_object_or_404(Worker, pk=payload.get("worker_id"))
-    if order.status != MoveOrder.STATUS_PENDING:
-        return bad_request("只有待抢单订单可以抢单")
-    if worker.status == Worker.STATUS_OFFLINE:
-        return bad_request(f"师傅 {worker.name} 当前离线，无法抢单")
-    if worker.status == Worker.STATUS_BUSY:
-        return bad_request(f"师傅 {worker.name} 正在服务中，无法抢单")
+    if not payload.get("worker_id"):
+        return bad_request("缺少师傅ID")
 
     with transaction.atomic():
+        order = get_object_or_404(MoveOrder.objects.select_for_update(), pk=order_id)
+        worker = get_object_or_404(Worker.objects.select_for_update(), pk=payload["worker_id"])
+
+        if order.status != MoveOrder.STATUS_PENDING:
+            return bad_request("只有待抢单订单可以抢单")
+        if worker.status == Worker.STATUS_OFFLINE:
+            return bad_request(f"师傅 {worker.name} 当前离线，无法抢单")
+        if worker.status == Worker.STATUS_BUSY:
+            return bad_request(f"师傅 {worker.name} 正在服务中，无法抢单")
+
         order.claimed_by = worker
         order.status = MoveOrder.STATUS_CLAIMED
         order.save(update_fields=["claimed_by", "status", "updated_at"])
         worker.status = Worker.STATUS_BUSY
         worker.save(update_fields=["status"])
         ProgressEvent.objects.create(order=order, stage=ProgressEvent.STAGE_CLAIMED, worker=worker, message=f"{worker.name} 已抢单")
+
     return JsonResponse(order_to_dict(order, include_detail=True))
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def assign_order(request, order_id):
-    order = get_object_or_404(MoveOrder, pk=order_id)
     payload = read_json(request)
-    worker = get_object_or_404(Worker, pk=payload.get("worker_id"))
-    if order.status not in [MoveOrder.STATUS_PENDING, MoveOrder.STATUS_CLAIMED]:
-        return bad_request("当前订单状态不能派单")
-    if worker.status == Worker.STATUS_OFFLINE:
-        return bad_request(f"师傅 {worker.name} 当前离线，无法派单")
-    if worker.status == Worker.STATUS_BUSY:
-        return bad_request(f"师傅 {worker.name} 正在服务中，无法派单")
+    if not payload.get("worker_id"):
+        return bad_request("缺少师傅ID")
 
     with transaction.atomic():
+        order = get_object_or_404(MoveOrder.objects.select_for_update(), pk=order_id)
+        worker = get_object_or_404(Worker.objects.select_for_update(), pk=payload["worker_id"])
+
+        if order.status not in [MoveOrder.STATUS_PENDING, MoveOrder.STATUS_CLAIMED]:
+            return bad_request("当前订单状态不能派单")
+        if worker.status == Worker.STATUS_OFFLINE:
+            return bad_request(f"师傅 {worker.name} 当前离线，无法派单")
+        if worker.status == Worker.STATUS_BUSY:
+            return bad_request(f"师傅 {worker.name} 正在服务中，无法派单")
+
         order.assigned_to = worker
         order.status = MoveOrder.STATUS_ASSIGNED
         if not order.claimed_by:
@@ -106,4 +115,5 @@ def assign_order(request, order_id):
         worker.status = Worker.STATUS_BUSY
         worker.save(update_fields=["status"])
         ProgressEvent.objects.create(order=order, stage=ProgressEvent.STAGE_ASSIGNED, worker=worker, message=f"平台已派单给 {worker.name}")
+
     return JsonResponse(order_to_dict(order, include_detail=True))

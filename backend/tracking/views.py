@@ -26,7 +26,6 @@ def event_to_dict(event):
 @csrf_exempt
 @require_http_methods(["POST"])
 def add_progress(request, order_id):
-    order = get_object_or_404(MoveOrder, pk=order_id)
     payload = json.loads(request.body.decode("utf-8"))
     worker = None
     if payload.get("worker_id"):
@@ -34,6 +33,8 @@ def add_progress(request, order_id):
 
     stage = payload["stage"]
     with transaction.atomic():
+        order = get_object_or_404(MoveOrder.objects.select_for_update(), pk=order_id)
+
         event = ProgressEvent.objects.create(
             order=order,
             worker=worker,
@@ -55,4 +56,5 @@ def add_progress(request, order_id):
         elif stage in [ProgressEvent.STAGE_DEPARTED, ProgressEvent.STAGE_LOADING, ProgressEvent.STAGE_IN_TRANSIT, ProgressEvent.STAGE_UNLOADING]:
             order.status = MoveOrder.STATUS_IN_PROGRESS
         order.save(update_fields=["status", "updated_at"])
+
     return JsonResponse(event_to_dict(event), status=201)
